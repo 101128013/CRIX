@@ -1,0 +1,26 @@
+{
+  "entities": {
+    "ImageRecord": {
+      "title": "Image Record",
+      "description": "A record of a generated or edited image",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "prompt": { "type": "string" },
+        "model": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "type": { "type": "string", "enum": ["generate", "edit", "multi-edit"] },
+        "settings": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "prompt", "model", "imageUrl", "timestamp", "type", "userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/history/{imageId}": {
+      "schema": "ImageRecord",
+      "description": "User's image generation history"
+    }
+  }
+}

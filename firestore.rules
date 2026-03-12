@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users/{userId}/history
+    // Document ID: {imageId}
+    // Fields:
+    //   - id: string (required)
+    //   - prompt: string (required)
+    //   - model: string (required)
+    //   - imageUrl: string (required)
+    //   - timestamp: string (required, ISO 8601)
+    //   - type: string (required, enum: generate, edit, multi-edit)
+    //   - settings: string (optional)
+    //   - userId: string (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "JakobHardenberg@outlook.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidImageRecord(data) {
+      return data.id is string &&
+             data.prompt is string && data.prompt.size() < 10000 &&
+             data.model is string &&
+             data.imageUrl is string && data.imageUrl.size() < 1048576 &&
+             data.timestamp is string &&
+             data.type in ['generate', 'edit', 'multi-edit'] &&
+             data.userId is string && data.userId == request.auth.uid;
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      
+      match /history/{imageId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidImageRecord(request.resource.data);
+        allow update: if isOwner(userId) && isValidImageRecord(request.resource.data) && 
+                         request.resource.data.id == resource.data.id;
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}
